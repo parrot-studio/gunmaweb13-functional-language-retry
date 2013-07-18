@@ -1,0 +1,328 @@
+= ((*「もうなにもこわくない」*))\n関数型言語
+
+: subtitle
+  ふつうのプログラマが\n関数型言語を知るべき理由・reload
+: author
+  ぱろっと(@parrot_studio)
+: content-source
+  Gunma.web #13
+: date
+  2013/05/18
+#: allotted-time
+#  5m
+: theme
+  theme-gunmaweb13
+
+
+= 注意事項
+
+* 本スライドは((*「Gunma.web #13」*))で発表するはずのものでした
+* 当日ドタキャンしたため、一度も外部で発表していません
+* 情報は2013/05時点のものであり、今となっては古いものが多いです
+
+= それでは\n本編を\n(´･ω･)っ
+
+= Profile
+
+* ぱろっと（(('tag:small:T.Tachiki'))）
+* @parrot_studio
+* parrot-studio.com
+* プログラマっぽい何か
+* （比較的）言語マニア
+
+= 2013/02/14
+
+= ((*Developers\nSummit*))\n2013
+
+= "こわくない関数型言語"
+
+  # image
+  # src = devsumi2013.png
+  # relative_width = 100
+
+(('tag:right'))(('note:http://event.shoeisha.jp/detail/1/session/13/'))
+
+= 結論
+
+= 関数型怖い(((((( ;ﾟДﾟ)))))
+
+  # image
+  # src = twitter.jpg
+  # relative_width = 45
+
+= このセッションで聞いた((*大事なこと*))
+
+= 大事なこと
+
+  # blockquote
+  "関数型((*言語*))があるのではない、関数型((*プログラミング*))があるだけだ"
+
+#= 別にCでオブジェクト指向も関数型も書けるというか、たいていの言語はCでできてるやん(´･ω･`)
+
+= "関数型プログラミング"\nとは？
+
+= それやったわー2年前にやったわー
+
+  # image
+  # src = gunmaweb5.png
+  # relative_width = 58
+
+(('tag:right'))(('note:http://www.slideshare.net/parrotstudio/gunmaweb-5-20110514'))
+
+= でも、あれいまいち\n(´･ω･`)
+
+= 私たちが知りたいこと
+
+(('tag:center'))(('tag:x-large:「どう書くと\\n((*”それっぽい”*))\\nのか？」'))
+
+= その一例
+
+= 以下の((*条件*))をつけて書く
+
+ * else/elsifを使わない
+ * for(;;)文を使わない
+
+= you may say...
+
+(('tag:center'))(('tag:x-large:"こんなの絶対おかしいよ"'))
+
+= ((*極力使わない*))でどう書けるかを考える
+
+= elseを使えない？
+
+ * 三項演算子
+ * case文
+ * ガード条件（後置構文）
+ * メソッドの細分化
+
+= forが使えない？
+
+ * リストベースの処理
+   * each/select/find/map...
+ * 再帰
+
+= 実際にやってみよう\n(`･ω･´)
+
+= 例：書きたいコード
+
+  # image
+  # src = maze.png
+  # relative_width = 50
+
+blockの中にある（かもしれない）\n
+roomのリストをくれщ(ﾟДﾟщ)
+
+= Rubyでとりあえず書く
+
+  # coderay ruby
+  def get_room_list_from_blocks
+    if self.blocks.nil?
+      return []
+    elsif self.blocks.size <= 0
+      return []
+    else
+      ret = []
+      for i in (0..self.blocks.size)
+        rooms = self.blocks[i].rooms
+        if rooms.size > 0
+          for j in (0..rooms.size)
+            ret << b.rooms[j]
+          end
+        end
+      end
+      return ret
+    end
+  end
+
+= 間違ってはいないけども・・・\n(´-ω-)
+
+= ガード条件は後置構文ですっきり
+
+#  # coderay ruby
+#  def get_room_list_from_blocks
+#    return [] if self.blocks.nil?
+#    return [] if self.blocks.size <= 0
+#
+#    ret = []
+#    for i in (0..self.blocks.size)
+#      rooms = self.blocks[i].rooms
+#      for j in (0..rooms.size)
+#        ret << b.rooms[j]
+#      end
+#    end
+#    return ret
+#  end
+#
+#= "<=0"を((*"言葉"*))で置き換えましょう
+
+  # coderay ruby
+  def get_room_list_from_blocks
+    return [] if (self.blocks || []).empty?
+
+    ret = []
+    for i in (0..self.blocks.size)
+      rooms = self.blocks[i].rooms
+      for j in (0..rooms.size)
+        ret << b.rooms[j]
+      end
+    end
+    return ret
+  end
+
+= "for"を"each"に変えよう
+
+  # coderay ruby
+  def get_room_list_from_blocks
+    return [] if (self.blocks || []).empty?
+
+    ret = []
+    self.blocks.each do |b|
+      rooms = b.rooms
+      unless rooms.empty?
+        rooms.each do |r|
+          ret << r
+        end
+      end
+    end
+    return ret
+  end
+
+= blockはroomsを持っているか((*知っている*))よね？
+
+  # coderay ruby
+  class Block
+    # ...
+
+    def has_rooms?
+      self.rooms.empty? ? false : true
+    end
+
+    # ...
+  end
+
+= "roomsを持っているblockを選ぶ"ようにしましょう
+
+  # coderay ruby
+  def get_room_list_from_blocks
+    return [] if (self.blocks || []).empty?
+
+    ret = []
+    bs = self.blocks.select(&:has_rooms?)
+    bs.each do |b|
+      b.rooms.each{|r| ret << r}
+    end
+    return ret
+  end
+
+= リストを処理するメソッドにはこんなものも
+
+ * collect : リストから評価した値を集める
+   * 個人的にはmapをよく使う
+ * flatten : リストを平坦にする
+   * [1, [2,3], [4, [5,6]]].flatten => [1,2,3,4,5,6]
+
+= "collect"や"flatten"も使いましょう
+
+  # coderay ruby
+  def get_room_list_from_blocks
+    return [] if (self.blocks || []).empty?
+    ret = self.blocks.select(&:has_rooms?).collect(&:rooms).flatten
+    return ret
+  end
+
+= Rubyは「最後に評価した値を返す」のでreturnいりません
+
+  # coderay ruby
+  def get_room_list_from_blocks
+    return [] if (self.blocks || []).empty?
+    self.blocks.select(&:has_rooms?).collect(&:rooms).flatten
+  end
+
+= 「名前」はわかりやすくシンプルに
+
+  # coderay ruby
+  def rooms
+    return [] if (self.blocks || []).empty?
+    self.blocks.select(&:has_rooms?).collect(&:rooms).flatten
+  end
+
+= もうめんどいからガード条件も合体
+
+  # coderay ruby
+  def rooms
+    (self.blocks || []).select(&:has_rooms?).collect(&:rooms).flatten
+  end
+
+(('note:※空リスト（[]）のselectやcollectも[]を返す'))
+
+= ((*一行*))\nΣ(ﾟДﾟ)
+
+= しかも・・・
+
+  # coderay ruby
+  blocks.select(&:has_rooms?).collect(&:rooms).flatten
+
+「blocksからroomsを持ったものを選び、roomsを集めてリストにして返す」と((*読める*))
+
+= ね、((*簡単*))でしょう\n(´･ω･)？
+
+= 「簡単」の定義とは
+
+(('tag:center'))【審議中】\n(´・ω) (´・ω・) (・ω・｀)
+
+= 冗談は\nさておき
+
+= ((*関数型っぽく書く*))と・・・
+
+ * ((*定義*))の羅列になる
+ * なんとなく((*読める*))
+ * 意図・目的が明確に
+
+= そうは言うがな大佐・・・
+
+= "いや、私には関係ないし"
+
+ * 関数型とか使う機会ないですし
+ * Rubyなんてあいまいな言語で書きませんし\nJavaの方がしっかりしてますし
+ * サーバサイド書きませんし
+ * ScalaでWebとかありえませんし
+
+= ありえない・・・？
+
+  # image
+  # src = scalaplay.png
+  # relative_width = 90
+
+(('tag:right'))(('note:http://www.playframework.com/'))
+
+= Javaと関数型は関係ない・・・？
+
+  # image
+  # src = java8.png
+  # relative_width = 90
+
+(('tag:right'))(('note:http://d.hatena.ne.jp/nowokay/20130504#1367702641'))
+
+= サーバサイドはやらないから関係ない・・・？
+
+ * ((*JavaScript*))はLispの子孫
+ * 最近の((*jQuery*))はだいぶ「それっぽい」記述に
+   * 特に非同期イベント周り
+
+= もはや、逃げ場はない\n(lllﾟДﾟ)
+
+= you may write...
+
+(('tag:center'))(('tag:x-large:"やっぱり\\n((*関数型こわい*))(((((( ;ﾟДﾟ)))))"'))
+
+= すぐにできること
+
+ * ((*メソッドを簡潔に*))まとめる
+   * メソッド内のネストを深くしすぎない
+   * 深くなる場合はたいてい大きすぎる
+ * ((*「言葉」*))を重視する
+   * 結局、その処理は「何をしたい」のか？
+
+= ((*できるところ*))からやってみよう
+
+= ありがとう\nございました\n(´･ω･)っ旦~
